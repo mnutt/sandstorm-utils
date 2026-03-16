@@ -17,7 +17,7 @@ const commandPurpose = "Inspect the Powerbox request descriptors attached to a S
 const commandSynopsis = "[--timeout 10s] <sessionId>"
 
 var commandExamples = []string{
-	"get-session-request <sessionId>",
+	"Inspect the Powerbox request descriptors attached to the current session.\nCommand: get-session-request <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: JSON describing the request descriptors and any decoded tag payloads.",
 }
 
 func main() {

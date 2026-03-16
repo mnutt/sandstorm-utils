@@ -23,9 +23,9 @@ const commandName = "stay-awake"
 const commandPurpose = "Acquire, renew, and release Sandstorm wake-lock leases."
 
 var commandExamples = []string{
-	"stay-awake acquire --ttl 10m --title \"Transcoding video\" --caption \"Encoding in the background\" <sessionId>",
-	"stay-awake renew --ttl 10m <lockId>",
-	"stay-awake release <lockId>",
+	"Acquire a wake lock for background work in the current Sandstorm session.\nCommand: stay-awake acquire --ttl 10m --title \"Transcoding video\" --caption \"Encoding in the background\" <sessionId>\nArguments: --ttl is the requested lease duration, --title and --caption control the notification text, and <sessionId> is the Sandstorm session ID for the current request.\nReturns: JSON with lockId and expiresAt.",
+	"Renew an existing wake-lock lease before it expires.\nCommand: stay-awake renew --ttl 10m <lockId>\nArguments: --ttl is the new requested lease duration and <lockId> is the lease ID returned by the acquire command.\nReturns: JSON with expiresAt.",
+	"Release a wake-lock lease when background work is complete.\nCommand: stay-awake release <lockId>\nArguments: <lockId> is the lease ID returned by the acquire command.\nReturns: no output on success.",
 }
 
 func main() {

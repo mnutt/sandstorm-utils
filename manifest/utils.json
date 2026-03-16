@@ -6,7 +6,7 @@
       "summary": "Closes an active Sandstorm session.",
       "description": "Close an active Sandstorm session.",
       "examples": [
-        "close-session <sessionId>"
+        "Close the current Sandstorm session.\nCommand: close-session <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: no output on success."
       ]
     },
     {
@@ -14,8 +14,8 @@
       "summary": "Returns the current grain's public ID metadata.",
       "description": "Fetch the current grain's public ID metadata.",
       "examples": [
-        "get-public-id <sessionId>",
-        "get-public-id --json <sessionId>"
+        "Fetch the grain's public ID metadata as plain text.\nCommand: get-public-id <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: newline-delimited text containing the public ID, hostname, auto URL, and demo-user flag.",
+        "Fetch the grain's public ID metadata as JSON.\nCommand: get-public-id --json <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: JSON with publicId, hostname, autoUrl, and isDemoUser."
       ]
     },
     {
@@ -23,7 +23,7 @@
       "summary": "Inspects the Powerbox offer attached to a Sandstorm session.",
       "description": "Inspect the Powerbox offer attached to a Sandstorm session.",
       "examples": [
-        "get-session-offer <sessionId>"
+        "Inspect the Powerbox offer attached to the current session.\nCommand: get-session-offer <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: JSON describing the attached Powerbox offer and any decoded tag payloads."
       ]
     },
     {
@@ -31,7 +31,7 @@
       "summary": "Inspects the Powerbox request descriptors attached to a Sandstorm session.",
       "description": "Inspect the Powerbox request descriptors attached to a Sandstorm session.",
       "examples": [
-        "get-session-request <sessionId>"
+        "Inspect the Powerbox request descriptors attached to the current session.\nCommand: get-session-request <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: JSON describing the request descriptors and any decoded tag payloads."
       ]
     },
     {
@@ -39,8 +39,8 @@
       "summary": "Returns the authenticated user's email address and display name.",
       "description": "Fetch the authenticated user's email address and display name.",
       "examples": [
-        "get-user-address <sessionId>",
-        "get-user-address --json <sessionId>"
+        "Fetch the authenticated user's address as plain text.\nCommand: get-user-address <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: newline-delimited text containing the email address and display name.",
+        "Fetch the authenticated user's address as JSON.\nCommand: get-user-address --json <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: JSON with address and name."
       ]
     },
     {
@@ -48,8 +48,8 @@
       "summary": "Asks Sandstorm to open a grain-relative path in the current or a new tab.",
       "description": "Ask Sandstorm to open a grain-relative path in the current or a new tab.",
       "examples": [
-        "open-view --path /docs/123 <sessionId>",
-        "open-view --path /docs/123 --new-tab <sessionId>"
+        "Ask Sandstorm to open a grain-relative path in the current tab.\nCommand: open-view --path /docs/123 <sessionId>\nArguments: --path is the grain-relative path to open and <sessionId> is the Sandstorm session ID for the current request.\nReturns: no output on success.",
+        "Ask Sandstorm to open a grain-relative path in a new tab.\nCommand: open-view --path /docs/123 --new-tab <sessionId>\nArguments: --path is the grain-relative path to open, --new-tab requests a new tab, and <sessionId> is the Sandstorm session ID for the current request.\nReturns: no output on success."
       ]
     },
     {
@@ -57,8 +57,8 @@
       "summary": "Posts a structured activity event to the current Sandstorm session.",
       "description": "Post a structured activity event to the current Sandstorm session.",
       "examples": [
-        "post-activity --path /issues/1#comment-2 --type 3 --thread-path /issues/1 --thread-title \"Issue 1\" --caption \"New comment\" <sessionId>",
-        "post-activity --json-input event.json <sessionId>"
+        "Post a simple activity event with direct flags.\nCommand: post-activity --path /issues/1#comment-2 --type 3 --thread-path /issues/1 --thread-title \"Issue 1\" --caption \"New comment\" <sessionId>\nArguments: --path is the grain-relative activity path, --type is the app-defined event type index, --thread-path and --thread-title identify the thread, --caption sets the notification caption, and <sessionId> is the Sandstorm session ID for the current request.\nReturns: no output on success.",
+        "Post a richer activity event from JSON.\nCommand: post-activity --json-input event.json <sessionId>\nArguments: --json-input points to a JSON file containing the activity payload and <sessionId> is the Sandstorm session ID for the current request.\nReturns: no output on success."
       ]
     },
     {
@@ -66,8 +66,8 @@
       "summary": "Sends an email through the current Sandstorm session.",
       "description": "Send an email through the current Sandstorm session.",
       "examples": [
-        "send-email --to user@example.com --subject \"Hello\" --text \"Hi there\" <sessionId>",
-        "send-email --json-input message.json <sessionId>"
+        "Send a plain-text email with direct flags.\nCommand: send-email --to user@example.com --subject \"Hello\" --text \"Hi there\" <sessionId>\nArguments: --to is the recipient address, --subject sets the subject line, --text sets the plain-text body, and <sessionId> is the Sandstorm session ID for the current request.\nReturns: no output on success.",
+        "Send an email from a JSON message definition.\nCommand: send-email --json-input message.json <sessionId>\nArguments: --json-input points to a JSON file describing the message and <sessionId> is the Sandstorm session ID for the current request.\nReturns: no output on success."
       ]
     },
     {
@@ -75,9 +75,9 @@
       "summary": "Acquires, renews, and releases Sandstorm wake-lock leases.",
       "description": "Acquire, renew, and release Sandstorm wake-lock leases.",
       "examples": [
-        "stay-awake acquire --ttl 10m --title \"Transcoding video\" --caption \"Encoding in the background\" <sessionId>",
-        "stay-awake renew --ttl 10m <lockId>",
-        "stay-awake release <lockId>"
+        "Acquire a wake lock for background work in the current Sandstorm session.\nCommand: stay-awake acquire --ttl 10m --title \"Transcoding video\" --caption \"Encoding in the background\" <sessionId>\nArguments: --ttl is the requested lease duration, --title and --caption control the notification text, and <sessionId> is the Sandstorm session ID for the current request.\nReturns: JSON with lockId and expiresAt.",
+        "Renew an existing wake-lock lease before it expires.\nCommand: stay-awake renew --ttl 10m <lockId>\nArguments: --ttl is the new requested lease duration and <lockId> is the lease ID returned by the acquire command.\nReturns: JSON with expiresAt.",
+        "Release a wake-lock lease when background work is complete.\nCommand: stay-awake release <lockId>\nArguments: <lockId> is the lease ID returned by the acquire command.\nReturns: no output on success."
       ]
     }
   ]

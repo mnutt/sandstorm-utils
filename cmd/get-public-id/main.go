@@ -17,8 +17,8 @@ const commandPurpose = "Fetch the current grain's public ID metadata."
 const commandSynopsis = "[--timeout 10s] [--json] <sessionId>"
 
 var commandExamples = []string{
-	"get-public-id <sessionId>",
-	"get-public-id --json <sessionId>",
+	"Fetch the grain's public ID metadata as plain text.\nCommand: get-public-id <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: newline-delimited text containing the public ID, hostname, auto URL, and demo-user flag.",
+	"Fetch the grain's public ID metadata as JSON.\nCommand: get-public-id --json <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: JSON with publicId, hostname, autoUrl, and isDemoUser.",
 }
 
 func main() {

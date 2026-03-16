@@ -17,8 +17,8 @@ const commandPurpose = "Ask Sandstorm to open a grain-relative path in the curre
 const commandSynopsis = "[--timeout 10s] [--path PATH] [--new-tab] <sessionId>"
 
 var commandExamples = []string{
-	"open-view --path /docs/123 <sessionId>",
-	"open-view --path /docs/123 --new-tab <sessionId>",
+	"Ask Sandstorm to open a grain-relative path in the current tab.\nCommand: open-view --path /docs/123 <sessionId>\nArguments: --path is the grain-relative path to open and <sessionId> is the Sandstorm session ID for the current request.\nReturns: no output on success.",
+	"Ask Sandstorm to open a grain-relative path in a new tab.\nCommand: open-view --path /docs/123 --new-tab <sessionId>\nArguments: --path is the grain-relative path to open, --new-tab requests a new tab, and <sessionId> is the Sandstorm session ID for the current request.\nReturns: no output on success.",
 }
 
 func main() {

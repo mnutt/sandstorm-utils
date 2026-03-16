@@ -18,8 +18,8 @@ const commandPurpose = "Send an email through the current Sandstorm session."
 const commandSynopsis = "[--timeout 10s] [--json-input FILE|-] [--from ADDR] [--from-name NAME] [--to ADDR] [--cc ADDR] [--bcc ADDR] [--reply-to ADDR] [--reply-to-name NAME] [--subject TEXT] [--text TEXT|--text-file FILE|-] [--html TEXT|--html-file FILE|-] <sessionId>"
 
 var commandExamples = []string{
-	"send-email --to user@example.com --subject \"Hello\" --text \"Hi there\" <sessionId>",
-	"send-email --json-input message.json <sessionId>",
+	"Send a plain-text email with direct flags.\nCommand: send-email --to user@example.com --subject \"Hello\" --text \"Hi there\" <sessionId>\nArguments: --to is the recipient address, --subject sets the subject line, --text sets the plain-text body, and <sessionId> is the Sandstorm session ID for the current request.\nReturns: no output on success.",
+	"Send an email from a JSON message definition.\nCommand: send-email --json-input message.json <sessionId>\nArguments: --json-input points to a JSON file describing the message and <sessionId> is the Sandstorm session ID for the current request.\nReturns: no output on success.",
 }
 
 type addressListFlag []sendemail.Address

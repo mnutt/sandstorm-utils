@@ -17,8 +17,8 @@ const commandPurpose = "Post a structured activity event to the current Sandstor
 const commandSynopsis = "[--timeout 10s] [--json-input FILE|-] [--path PATH] [--type N] [--thread-path PATH] [--thread-title TITLE] [--caption TEXT] <sessionId>"
 
 var commandExamples = []string{
-	"post-activity --path /issues/1#comment-2 --type 3 --thread-path /issues/1 --thread-title \"Issue 1\" --caption \"New comment\" <sessionId>",
-	"post-activity --json-input event.json <sessionId>",
+	"Post a simple activity event with direct flags.\nCommand: post-activity --path /issues/1#comment-2 --type 3 --thread-path /issues/1 --thread-title \"Issue 1\" --caption \"New comment\" <sessionId>\nArguments: --path is the grain-relative activity path, --type is the app-defined event type index, --thread-path and --thread-title identify the thread, --caption sets the notification caption, and <sessionId> is the Sandstorm session ID for the current request.\nReturns: no output on success.",
+	"Post a richer activity event from JSON.\nCommand: post-activity --json-input event.json <sessionId>\nArguments: --json-input points to a JSON file containing the activity payload and <sessionId> is the Sandstorm session ID for the current request.\nReturns: no output on success.",
 }
 
 func main() {
