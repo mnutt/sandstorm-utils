@@ -1,0 +1,21 @@
+name: Build Testapp SPK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-spk:
+    uses: ./.github/workflows/spk-build-reusable.yml
+    with:
+      environment_name: test-spk
+      spk_output_path: build/sandstorm-utils-testapp-${{ github.sha }}.spk
+      artifact_name: sandstorm-utils-testapp-spk-${{ github.sha }}
+    secrets:
+      sandstorm_keyring_b64: ${{ secrets.SANDSTORM_TESTAPP_KEYRING_B64 }}
