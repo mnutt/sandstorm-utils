@@ -54,17 +54,29 @@ Build all commands:
 go build ./cmd/...
 ```
 
-Build release binaries into `dist/bin`:
+Build local development binaries into `dist/bin`:
 
 ```bash
 make build
 ```
 
-Build a release tarball for a target platform:
+Generate the utility manifest consumed by downstream tooling:
+
+```bash
+make manifest
+```
+
+The release workflow also publishes `manifest/utils.json` as a release asset so
+downstream tooling can discover the available utilities and their summaries.
+
+Build the Linux `amd64` release tarball used for Sandstorm integration:
 
 ```bash
 make package VERSION=v0.1.0 GOOS=linux GOARCH=amd64
 ```
+
+The published GitHub release currently only ships this `linux/amd64` archive,
+since that is the deployment target that matters for Sandstorm.
 
 Build the Sandstorm integration harness payload locally:
 

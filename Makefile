@@ -11,10 +11,13 @@ GOOS ?= $(shell $(GO) env GOOS)
 GOARCH ?= $(shell $(GO) env GOARCH)
 CMDS := get-public-id get-user-address close-session open-view post-activity get-session-request get-session-offer send-email stay-awake
 
-.PHONY: generate build test install package clean
+.PHONY: generate manifest build test install package clean
 
 generate:
 	./scripts/generate-capnp.sh
+
+manifest:
+	$(GO) run ./scripts/generate-utils-manifest.go
 
 build:
 	rm -rf $(BINDIR)

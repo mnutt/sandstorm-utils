@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "utilities": [
+    {
+      "name": "close-session",
+      "summary": "Closes an active Sandstorm session.",
+      "binary": "close-session"
+    },
+    {
+      "name": "get-public-id",
+      "summary": "Returns the current grain's public ID metadata.",
+      "binary": "get-public-id"
+    },
+    {
+      "name": "get-session-offer",
+      "summary": "Inspects the Powerbox offer attached to a Sandstorm session.",
+      "binary": "get-session-offer"
+    },
+    {
+      "name": "get-session-request",
+      "summary": "Inspects the Powerbox request descriptors attached to a Sandstorm session.",
+      "binary": "get-session-request"
+    },
+    {
+      "name": "get-user-address",
+      "summary": "Returns the authenticated user's email address and display name.",
+      "binary": "get-user-address"
+    },
+    {
+      "name": "open-view",
+      "summary": "Asks Sandstorm to open a grain-relative path in the current or a new tab.",
+      "binary": "open-view"
+    },
+    {
+      "name": "post-activity",
+      "summary": "Posts a structured activity event to the current Sandstorm session.",
+      "binary": "post-activity"
+    },
+    {
+      "name": "send-email",
+      "summary": "Sends an email through the current Sandstorm session.",
+      "binary": "send-email"
+    },
+    {
+      "name": "stay-awake",
+      "summary": "Acquires, renews, and releases Sandstorm wake-lock leases.",
+      "binary": "stay-awake"
+    }
+  ]
+}
