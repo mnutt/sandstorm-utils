@@ -16,6 +16,10 @@ const commandName = "close-session"
 const commandPurpose = "Close an active Sandstorm session."
 const commandSynopsis = "[--timeout 10s] <sessionId>"
 
+var commandExamples = []string{
+	"close-session <sessionId>",
+}
+
 func main() {
 	if err := run(context.Background(), os.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {

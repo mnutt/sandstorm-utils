@@ -16,6 +16,11 @@ const commandName = "get-public-id"
 const commandPurpose = "Fetch the current grain's public ID metadata."
 const commandSynopsis = "[--timeout 10s] [--json] <sessionId>"
 
+var commandExamples = []string{
+	"get-public-id <sessionId>",
+	"get-public-id --json <sessionId>",
+}
+
 func main() {
 	if err := run(context.Background(), os.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {

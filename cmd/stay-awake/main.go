@@ -20,6 +20,13 @@ import (
 )
 
 const commandName = "stay-awake"
+const commandPurpose = "Acquire, renew, and release Sandstorm wake-lock leases."
+
+var commandExamples = []string{
+	"stay-awake acquire --ttl 10m --title \"Transcoding video\" --caption \"Encoding in the background\" <sessionId>",
+	"stay-awake renew --ttl 10m <lockId>",
+	"stay-awake release <lockId>",
+}
 
 func main() {
 	if err := run(context.Background(), os.Args[1:]); err != nil {

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -19,9 +20,10 @@ type manifest struct {
 }
 
 type manifestUtil struct {
-	Name    string `json:"name"`
-	Summary string `json:"summary"`
-	Binary  string `json:"binary"`
+	Name        string   `json:"name"`
+	Summary     string   `json:"summary"`
+	Description string   `json:"description"`
+	Examples    []string `json:"examples"`
 }
 
 func main() {
@@ -58,15 +60,16 @@ func generateManifest(root string) ([]byte, error) {
 		}
 
 		name := entry.Name()
-		summary, err := packageSummary(filepath.Join(cmdRoot, name))
+		meta, err := commandMetadata(filepath.Join(cmdRoot, name))
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", name, err)
 		}
 
 		utilities = append(utilities, manifestUtil{
-			Name:    name,
-			Summary: summary,
-			Binary:  name,
+			Name:        name,
+			Summary:     meta.summary,
+			Description: meta.description,
+			Examples:    meta.examples,
 		})
 	}
 
@@ -74,28 +77,42 @@ func generateManifest(root string) ([]byte, error) {
 		return utilities[i].Name < utilities[j].Name
 	})
 
-	data, err := json.MarshalIndent(manifest{
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	err = encoder.Encode(manifest{
 		Version:   1,
 		Utilities: utilities,
-	}, "", "  ")
+	})
 	if err != nil {
 		return nil, err
 	}
-	return append(data, '\n'), nil
+	data := buf.Bytes()
+	data = bytes.ReplaceAll(data, []byte(`\u003c`), []byte("<"))
+	data = bytes.ReplaceAll(data, []byte(`\u003e`), []byte(">"))
+	data = bytes.ReplaceAll(data, []byte(`\u0026`), []byte("&"))
+	return data, nil
 }
 
-func packageSummary(dir string) (string, error) {
+type commandMeta struct {
+	summary     string
+	description string
+	examples    []string
+}
+
+func commandMetadata(dir string) (commandMeta, error) {
 	fset := token.NewFileSet()
 	pkgs, err := parser.ParseDir(fset, dir, func(info os.FileInfo) bool {
 		return !strings.HasSuffix(info.Name(), "_test.go")
 	}, parser.ParseComments)
 	if err != nil {
-		return "", err
+		return commandMeta{}, err
 	}
 
 	pkg, ok := pkgs["main"]
 	if !ok {
-		return "", fmt.Errorf("main package not found")
+		return commandMeta{}, fmt.Errorf("main package not found")
 	}
 
 	var files []*ast.File
@@ -106,17 +123,32 @@ func packageSummary(dir string) (string, error) {
 		return fset.Position(files[i].Package).Filename < fset.Position(files[j].Package).Filename
 	})
 
+	meta := commandMeta{}
 	for _, file := range files {
 		if file.Doc == nil {
-			continue
+		} else if meta.summary == "" {
+			summary := normalizeSummary(strings.TrimSpace(firstParagraph(file.Doc.Text())))
+			if summary != "" {
+				meta.summary = summary
+			}
 		}
-		summary := normalizeSummary(strings.TrimSpace(firstParagraph(file.Doc.Text())))
-		if summary != "" {
-			return summary, nil
+
+		if err := collectFileMetadata(file, &meta); err != nil {
+			return commandMeta{}, err
 		}
 	}
 
-	return "", fmt.Errorf("package doc comment not found")
+	if meta.summary == "" {
+		return commandMeta{}, fmt.Errorf("package doc comment not found")
+	}
+	if meta.description == "" {
+		return commandMeta{}, fmt.Errorf("commandPurpose constant not found")
+	}
+	if len(meta.examples) == 0 {
+		return commandMeta{}, fmt.Errorf("commandExamples variable not found")
+	}
+
+	return meta, nil
 }
 
 func firstParagraph(text string) string {
@@ -139,6 +171,84 @@ func normalizeSummary(summary string) string {
 	}
 
 	return summary
+}
+
+func collectFileMetadata(file *ast.File, meta *commandMeta) error {
+	for _, decl := range file.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok {
+			continue
+		}
+		switch gen.Tok {
+		case token.CONST:
+			for _, spec := range gen.Specs {
+				valueSpec, ok := spec.(*ast.ValueSpec)
+				if !ok {
+					continue
+				}
+				for i, name := range valueSpec.Names {
+					if name.Name != "commandPurpose" || meta.description != "" {
+						continue
+					}
+					if i >= len(valueSpec.Values) {
+						return fmt.Errorf("commandPurpose has no value")
+					}
+					value, err := stringLiteral(valueSpec.Values[i])
+					if err != nil {
+						return err
+					}
+					meta.description = value
+				}
+			}
+		case token.VAR:
+			for _, spec := range gen.Specs {
+				valueSpec, ok := spec.(*ast.ValueSpec)
+				if !ok {
+					continue
+				}
+				for i, name := range valueSpec.Names {
+					if name.Name != "commandExamples" || len(meta.examples) > 0 {
+						continue
+					}
+					if i >= len(valueSpec.Values) {
+						return fmt.Errorf("commandExamples has no value")
+					}
+					values, err := stringSliceLiteral(valueSpec.Values[i])
+					if err != nil {
+						return err
+					}
+					meta.examples = values
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func stringLiteral(expr ast.Expr) (string, error) {
+	lit, ok := expr.(*ast.BasicLit)
+	if !ok || lit.Kind != token.STRING {
+		return "", fmt.Errorf("expected string literal")
+	}
+	return strconv.Unquote(lit.Value)
+}
+
+func stringSliceLiteral(expr ast.Expr) ([]string, error) {
+	composite, ok := expr.(*ast.CompositeLit)
+	if !ok {
+		return nil, fmt.Errorf("expected string slice literal")
+	}
+
+	values := make([]string, 0, len(composite.Elts))
+	for _, elt := range composite.Elts {
+		value, err := stringLiteral(elt)
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, value)
+	}
+	return values, nil
 }
 
 func fail(err error) {

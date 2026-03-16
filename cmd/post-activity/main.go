@@ -16,6 +16,11 @@ const commandName = "post-activity"
 const commandPurpose = "Post a structured activity event to the current Sandstorm session."
 const commandSynopsis = "[--timeout 10s] [--json-input FILE|-] [--path PATH] [--type N] [--thread-path PATH] [--thread-title TITLE] [--caption TEXT] <sessionId>"
 
+var commandExamples = []string{
+	"post-activity --path /issues/1#comment-2 --type 3 --thread-path /issues/1 --thread-title \"Issue 1\" --caption \"New comment\" <sessionId>",
+	"post-activity --json-input event.json <sessionId>",
+}
+
 func main() {
 	if err := run(context.Background(), os.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {

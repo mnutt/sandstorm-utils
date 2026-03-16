@@ -16,6 +16,10 @@ const commandName = "get-session-offer"
 const commandPurpose = "Inspect the Powerbox offer attached to a Sandstorm session."
 const commandSynopsis = "[--timeout 10s] <sessionId>"
 
+var commandExamples = []string{
+	"get-session-offer <sessionId>",
+}
+
 func main() {
 	if err := run(context.Background(), os.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {

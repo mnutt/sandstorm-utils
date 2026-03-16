@@ -16,6 +16,10 @@ const commandName = "get-session-request"
 const commandPurpose = "Inspect the Powerbox request descriptors attached to a Sandstorm session."
 const commandSynopsis = "[--timeout 10s] <sessionId>"
 
+var commandExamples = []string{
+	"get-session-request <sessionId>",
+}
+
 func main() {
 	if err := run(context.Background(), os.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {

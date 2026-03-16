@@ -4,47 +4,81 @@
     {
       "name": "close-session",
       "summary": "Closes an active Sandstorm session.",
-      "binary": "close-session"
+      "description": "Close an active Sandstorm session.",
+      "examples": [
+        "close-session <sessionId>"
+      ]
     },
     {
       "name": "get-public-id",
       "summary": "Returns the current grain's public ID metadata.",
-      "binary": "get-public-id"
+      "description": "Fetch the current grain's public ID metadata.",
+      "examples": [
+        "get-public-id <sessionId>",
+        "get-public-id --json <sessionId>"
+      ]
     },
     {
       "name": "get-session-offer",
       "summary": "Inspects the Powerbox offer attached to a Sandstorm session.",
-      "binary": "get-session-offer"
+      "description": "Inspect the Powerbox offer attached to a Sandstorm session.",
+      "examples": [
+        "get-session-offer <sessionId>"
+      ]
     },
     {
       "name": "get-session-request",
       "summary": "Inspects the Powerbox request descriptors attached to a Sandstorm session.",
-      "binary": "get-session-request"
+      "description": "Inspect the Powerbox request descriptors attached to a Sandstorm session.",
+      "examples": [
+        "get-session-request <sessionId>"
+      ]
     },
     {
       "name": "get-user-address",
       "summary": "Returns the authenticated user's email address and display name.",
-      "binary": "get-user-address"
+      "description": "Fetch the authenticated user's email address and display name.",
+      "examples": [
+        "get-user-address <sessionId>",
+        "get-user-address --json <sessionId>"
+      ]
     },
     {
       "name": "open-view",
       "summary": "Asks Sandstorm to open a grain-relative path in the current or a new tab.",
-      "binary": "open-view"
+      "description": "Ask Sandstorm to open a grain-relative path in the current or a new tab.",
+      "examples": [
+        "open-view --path /docs/123 <sessionId>",
+        "open-view --path /docs/123 --new-tab <sessionId>"
+      ]
     },
     {
       "name": "post-activity",
       "summary": "Posts a structured activity event to the current Sandstorm session.",
-      "binary": "post-activity"
+      "description": "Post a structured activity event to the current Sandstorm session.",
+      "examples": [
+        "post-activity --path /issues/1#comment-2 --type 3 --thread-path /issues/1 --thread-title \"Issue 1\" --caption \"New comment\" <sessionId>",
+        "post-activity --json-input event.json <sessionId>"
+      ]
     },
     {
       "name": "send-email",
       "summary": "Sends an email through the current Sandstorm session.",
-      "binary": "send-email"
+      "description": "Send an email through the current Sandstorm session.",
+      "examples": [
+        "send-email --to user@example.com --subject \"Hello\" --text \"Hi there\" <sessionId>",
+        "send-email --json-input message.json <sessionId>"
+      ]
     },
     {
       "name": "stay-awake",
       "summary": "Acquires, renews, and releases Sandstorm wake-lock leases.",
-      "binary": "stay-awake"
+      "description": "Acquire, renew, and release Sandstorm wake-lock leases.",
+      "examples": [
+        "stay-awake acquire --ttl 10m --title \"Transcoding video\" --caption \"Encoding in the background\" <sessionId>",
+        "stay-awake renew --ttl 10m <lockId>",
+        "stay-awake release <lockId>"
+      ]
     }
   ]
 }

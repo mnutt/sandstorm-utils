@@ -16,6 +16,11 @@ const commandName = "get-user-address"
 const commandPurpose = "Fetch the authenticated user's email address and display name."
 const commandSynopsis = "[--timeout 10s] [--json] <sessionId>"
 
+var commandExamples = []string{
+	"get-user-address <sessionId>",
+	"get-user-address --json <sessionId>",
+}
+
 func main() {
 	if err := run(context.Background(), os.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {

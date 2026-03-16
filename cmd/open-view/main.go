@@ -16,6 +16,11 @@ const commandName = "open-view"
 const commandPurpose = "Ask Sandstorm to open a grain-relative path in the current or a new tab."
 const commandSynopsis = "[--timeout 10s] [--path PATH] [--new-tab] <sessionId>"
 
+var commandExamples = []string{
+	"open-view --path /docs/123 <sessionId>",
+	"open-view --path /docs/123 --new-tab <sessionId>",
+}
+
 func main() {
 	if err := run(context.Background(), os.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {

@@ -17,6 +17,11 @@ const commandName = "send-email"
 const commandPurpose = "Send an email through the current Sandstorm session."
 const commandSynopsis = "[--timeout 10s] [--json-input FILE|-] [--from ADDR] [--from-name NAME] [--to ADDR] [--cc ADDR] [--bcc ADDR] [--reply-to ADDR] [--reply-to-name NAME] [--subject TEXT] [--text TEXT|--text-file FILE|-] [--html TEXT|--html-file FILE|-] <sessionId>"
 
+var commandExamples = []string{
+	"send-email --to user@example.com --subject \"Hello\" --text \"Hi there\" <sessionId>",
+	"send-email --json-input message.json <sessionId>",
+}
+
 type addressListFlag []sendemail.Address
 
 func (f *addressListFlag) add(value string) error {
