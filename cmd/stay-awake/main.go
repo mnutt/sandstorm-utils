@@ -67,7 +67,9 @@ func run(parent context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	stayawake.Debugf("helper acquired wake lock; entering wait loop")
 	defer func() {
+		stayawake.Debugf("helper releasing wake lock")
 		_ = lock.Release()
 	}()
 
@@ -88,10 +90,13 @@ func waitForRelease(parent context.Context, holdFor time.Duration) error {
 
 	select {
 	case <-ctx.Done():
+		stayawake.Debugf("helper exiting: context canceled or signal received")
 		return nil
 	case <-stdinDone:
+		stayawake.Debugf("helper exiting: stdin closed")
 		return nil
 	case <-timer:
+		stayawake.Debugf("helper exiting: --for duration elapsed")
 		return nil
 	}
 }
@@ -104,7 +109,9 @@ func watchStdin(r *os.File) <-chan struct{} {
 
 	go func() {
 		defer close(done)
+		stayawake.Debugf("helper stdin watcher started")
 		_, _ = io.Copy(io.Discard, r)
+		stayawake.Debugf("helper stdin watcher saw EOF/close")
 	}()
 
 	return done
@@ -116,7 +123,10 @@ func shouldIgnoreStdin(r *os.File) bool {
 	}
 	info, err := r.Stat()
 	if err != nil {
+		stayawake.Debugf("helper stdin stat failed: %v", err)
 		return true
 	}
-	return (info.Mode() & os.ModeCharDevice) != 0
+	ignore := (info.Mode() & os.ModeCharDevice) != 0
+	stayawake.Debugf("helper stdin mode=%s ignore=%t", info.Mode().String(), ignore)
+	return ignore
 }

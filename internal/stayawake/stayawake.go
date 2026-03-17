@@ -132,6 +132,7 @@ func NewBroker(opts Options) *Broker {
 
 func AcquireHeldLock(ctx context.Context, opts Options, req AcquireRequest) (*HeldLock, error) {
 	broker := NewBroker(opts)
+	Debugf("AcquireHeldLock sessionID_len=%d title=%q", len(req.SessionID), req.Title)
 	resp, err := broker.Acquire(ctx, AcquireRequest{
 		SessionID: req.SessionID,
 		TTL:       DefaultTTL,
@@ -139,8 +140,10 @@ func AcquireHeldLock(ctx context.Context, opts Options, req AcquireRequest) (*He
 		Caption:   req.Caption,
 	})
 	if err != nil {
+		Debugf("AcquireHeldLock failed: %v", err)
 		return nil, err
 	}
+	Debugf("AcquireHeldLock acquired lockID=%s expiresAt=%s", resp.LockID, resp.ExpiresAt.UTC().Format(time.RFC3339Nano))
 	return &HeldLock{broker: broker, lockID: resp.LockID}, nil
 }
 
@@ -148,6 +151,7 @@ func (l *HeldLock) Release() error {
 	if l == nil || l.broker == nil || l.lockID == "" {
 		return nil
 	}
+	Debugf("HeldLock.Release lockID=%s", l.lockID)
 	err := l.broker.Release(l.lockID)
 	l.lockID = ""
 	return err
@@ -282,6 +286,7 @@ func (b *Broker) Acquire(ctx context.Context, req AcquireRequest) (AcquireRespon
 	if err != nil {
 		return AcquireResponse{}, err
 	}
+	Debugf("Broker.Acquire sessionID_len=%d title=%q lockID=%s", len(req.SessionID), req.Title, lockID)
 
 	caption := joinNotificationText(req.Title, req.Caption)
 	notificationServer := &notificationServer{broker: b, lockID: lockID}
@@ -289,6 +294,7 @@ func (b *Broker) Acquire(ctx context.Context, req AcquireRequest) (AcquireRespon
 
 	handle, conn, rpcConn, err := b.acquireWakeLock(ctx, caption, notification)
 	if err != nil {
+		Debugf("Broker.Acquire acquireWakeLock failed lockID=%s err=%v", lockID, err)
 		notification.Release()
 		return AcquireResponse{}, err
 	}
@@ -306,6 +312,7 @@ func (b *Broker) Acquire(ctx context.Context, req AcquireRequest) (AcquireRespon
 		rpcConn:      rpcConn,
 	}
 	b.mu.Unlock()
+	Debugf("Broker.Acquire stored lockID=%s", lockID)
 
 	return AcquireResponse{
 		LockID:    lockID,
@@ -337,8 +344,10 @@ func (b *Broker) Renew(lockID string, ttl time.Duration) (time.Time, error) {
 }
 
 func (b *Broker) Release(lockID string) error {
+	Debugf("Broker.Release lockID=%s", lockID)
 	entry, ok := b.removeLock(lockID)
 	if !ok {
+		Debugf("Broker.Release lockID=%s not found", lockID)
 		return ErrLockNotFound
 	}
 	releaseEntry(entry)
@@ -518,6 +527,7 @@ type notificationServer struct {
 }
 
 func (n *notificationServer) Cancel(context.Context, activity.OngoingNotification_cancel) error {
+	Debugf("notification cancel lockID=%s", n.lockID)
 	n.broker.cancel(n.lockID)
 	return nil
 }
@@ -568,6 +578,7 @@ func releaseEntry(entry *lockEntry) {
 	if entry == nil {
 		return
 	}
+	Debugf("releaseEntry lockID=%s", entry.id)
 	if entry.handle.IsValid() {
 		entry.handle.Release()
 	}
@@ -584,6 +595,10 @@ func releaseEntry(entry *lockEntry) {
 
 func errorResponse(err error) protocolResponse {
 	return protocolResponse{OK: false, Error: err.Error()}
+}
+
+func Debugf(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "[stay-awake-debug] "+format+"\n", args...)
 }
 
 func writeResponse(w io.Writer, resp protocolResponse) {
