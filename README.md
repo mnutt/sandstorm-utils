@@ -35,7 +35,7 @@ Current layout:
 - `cmd/get-session-request`: `SandstormHttpBridge.getSessionRequest()`
 - `cmd/get-session-offer`: `SandstormHttpBridge.getSessionOffer()`
 - `cmd/send-email`: `EmailSendPort.send()` via `HackSessionContext`
-- `cmd/stay-awake`: brokered `SandstormApi.stayAwake()` leases
+- `cmd/stay-awake`: helper that holds `SandstormApi.stayAwake()` for the life of the process
 - `testapp`: Sandstorm integration harness that shells out to the utilities
 - `internal/sandstorm`: shared bridge/session client logic
 - `schemas/sandstorm`: vendored annotated Cap'n Proto schemas
@@ -127,9 +127,8 @@ Command examples:
 ./send-email --to user@example.com --subject "Hello" --text "Hi there" <session-id>
 ./send-email --json-input message.json <session-id>
 
-./stay-awake acquire --ttl 10m --title "Transcoding video" --caption "Encoding in the background" <session-id>
-./stay-awake renew <lock-id>
-./stay-awake release <lock-id>
+./stay-awake --title "Transcoding video" --caption "Encoding in the background" <session-id>
+./stay-awake --for 30s --title "Transcoding video" --caption "Encoding in the background" <session-id>
 ```
 
 Behavior notes:
@@ -154,8 +153,8 @@ Behavior notes:
   marker.
 - `send-email` defaults the sender to `get-user-address()` when `--from` is
   not provided, and accepts either direct flags or `--json-input FILE`.
-- `stay-awake` lazily starts a local broker that holds live Sandstorm wake-lock
-  handles, and its `acquire`/`renew` output is JSON for callers to parse.
+- `stay-awake` acquires a Sandstorm wake lock and keeps it alive for the life
+  of the helper process; close stdin or send a termination signal to release it.
 - `testapp/` contains a minimal Sandstorm app plus Lima/SPK workflows for
   packaging an integration harness. Its package ID should match the signing key
   stored in `SANDSTORM_TESTAPP_KEYRING_B64`.

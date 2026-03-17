@@ -21,3 +21,9 @@ node examples/close-after-export.mjs <session-id>
 node examples/send-email.mjs <session-id> <recipient-email>
 node examples/stay-awake.mjs <session-id>
 ```
+
+`stay-awake.mjs` demonstrates the intended integration pattern for background
+work: spawn `stay-awake` as a child process, keep its stdin open while the job
+runs, then close stdin to release the lock and let the helper exit. The lock
+also ends if the helper is terminated or, when `--for` is used, when that
+duration expires.

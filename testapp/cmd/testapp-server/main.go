@@ -326,50 +326,16 @@ func (a *app) runSendEmail(ctx context.Context, sessionID, recipient string) ([]
 }
 
 func (a *app) runStayAwake(ctx context.Context, sessionID string) ([]commandResult, error) {
-	steps := make([]commandResult, 0, 3)
-
-	acquire, err := a.execJSON(ctx, "stay-awake", []string{
-		"acquire",
-		"--ttl", "30s",
+	step, err := a.execCommand(ctx, "stay-awake", []string{
+		"--for", "2s",
 		"--title", "sandstorm-utils testapp",
 		"--caption", "Running integration task",
 		sessionID,
 	})
-	steps = append(steps, acquire)
 	if err != nil {
-		return steps, err
+		return []commandResult{step}, err
 	}
-
-	lockID, ok := parsedString(acquire.ParsedJSON, "lockId")
-	if !ok || lockID == "" {
-		return steps, errors.New("stay-awake acquire did not return lockId")
-	}
-
-	select {
-	case <-time.After(1 * time.Second):
-	case <-ctx.Done():
-		return steps, ctx.Err()
-	}
-
-	renew, err := a.execJSON(ctx, "stay-awake", []string{"renew", "--ttl", "30s", lockID})
-	steps = append(steps, renew)
-	if err != nil {
-		return steps, err
-	}
-
-	select {
-	case <-time.After(1 * time.Second):
-	case <-ctx.Done():
-		return steps, ctx.Err()
-	}
-
-	release, err := a.execCommand(ctx, "stay-awake", []string{"release", lockID})
-	steps = append(steps, release)
-	if err != nil {
-		return steps, err
-	}
-
-	return steps, nil
+	return []commandResult{step}, nil
 }
 
 func (a *app) execJSON(ctx context.Context, name string, args []string) (commandResult, error) {

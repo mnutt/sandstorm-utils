@@ -17,7 +17,7 @@ const commandPurpose = "Inspect the Powerbox offer attached to a Sandstorm sessi
 const commandSynopsis = "[--timeout 10s] <sessionId>"
 
 var commandExamples = []string{
-	"Inspect the Powerbox offer attached to the current session.\nCommand: get-session-offer <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: JSON describing the attached Powerbox offer and any decoded tag payloads.",
+	"Inspect the Powerbox offer attached to the current session before deciding how to handle an incoming capability.\nCommand: get-session-offer <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: JSON describing the attached Powerbox offer and any decoded tag payloads.\nUse this when an app needs to understand what the user just offered through the Powerbox.",
 }
 
 func main() {

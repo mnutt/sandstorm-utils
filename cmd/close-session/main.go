@@ -17,7 +17,7 @@ const commandPurpose = "Close an active Sandstorm session."
 const commandSynopsis = "[--timeout 10s] <sessionId>"
 
 var commandExamples = []string{
-	"Close the current Sandstorm session.\nCommand: close-session <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: no output on success.",
+	"Close the current Sandstorm session after app-specific work is complete.\nCommand: close-session <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nEffect: asks Sandstorm to close the current session or tab for that user.\nReturns: no output on success.",
 }
 
 func main() {

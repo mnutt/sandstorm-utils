@@ -1,2 +1,2 @@
-// Acquires, renews, and releases Sandstorm wake-lock leases.
+// Keeps a Sandstorm wake lock active for the lifetime of the helper process.
 package main

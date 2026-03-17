@@ -74,6 +74,11 @@ type AcquireResponse struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 }
 
+type HeldLock struct {
+	broker *Broker
+	lockID string
+}
+
 type protocolRequest struct {
 	Op        string `json:"op"`
 	SessionID string `json:"sessionId,omitempty"`
@@ -123,6 +128,29 @@ func NewBroker(opts Options) *Broker {
 		reapInterval: reapInterval,
 		locks:        map[string]*lockEntry{},
 	}
+}
+
+func AcquireHeldLock(ctx context.Context, opts Options, req AcquireRequest) (*HeldLock, error) {
+	broker := NewBroker(opts)
+	resp, err := broker.Acquire(ctx, AcquireRequest{
+		SessionID: req.SessionID,
+		TTL:       DefaultTTL,
+		Title:     req.Title,
+		Caption:   req.Caption,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &HeldLock{broker: broker, lockID: resp.LockID}, nil
+}
+
+func (l *HeldLock) Release() error {
+	if l == nil || l.broker == nil || l.lockID == "" {
+		return nil
+	}
+	err := l.broker.Release(l.lockID)
+	l.lockID = ""
+	return err
 }
 
 func (c *Client) Acquire(ctx context.Context, req AcquireRequest) (AcquireResponse, error) {

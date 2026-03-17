@@ -17,8 +17,8 @@ const commandPurpose = "Fetch the authenticated user's email address and display
 const commandSynopsis = "[--timeout 10s] [--json] <sessionId>"
 
 var commandExamples = []string{
-	"Fetch the authenticated user's address as plain text.\nCommand: get-user-address <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: newline-delimited text containing the email address and display name.",
-	"Fetch the authenticated user's address as JSON.\nCommand: get-user-address --json <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: JSON with address and name.",
+	"Fetch the authenticated user's address as plain text for logs or shell scripts.\nCommand: get-user-address <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: newline-delimited text containing the email address and display name.\nThe address may be blank in local development or when Sandstorm does not expose one.",
+	"Fetch the authenticated user's address as JSON for programmatic use.\nCommand: get-user-address --json <sessionId>\nArguments: <sessionId> is the Sandstorm session ID for the current request.\nReturns: JSON with address and name.\nThe address may be blank in local development or when Sandstorm does not expose one.",
 }
 
 func main() {

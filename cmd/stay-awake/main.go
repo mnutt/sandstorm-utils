@@ -2,15 +2,12 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"net"
+	"io"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
+	"os/signal"
 	"syscall"
 	"time"
 
@@ -20,12 +17,12 @@ import (
 )
 
 const commandName = "stay-awake"
-const commandPurpose = "Acquire, renew, and release Sandstorm wake-lock leases."
+const commandPurpose = "Keep a Sandstorm wake lock active for the lifetime of the helper process."
+const commandSynopsis = "[--timeout 10s] [--api-path PATH] [--for DURATION] --title TEXT [--caption TEXT] <sessionId>"
 
 var commandExamples = []string{
-	"Acquire a wake lock for background work in the current Sandstorm session.\nCommand: stay-awake acquire --ttl 10m --title \"Transcoding video\" --caption \"Encoding in the background\" <sessionId>\nArguments: --ttl is the requested lease duration, --title and --caption control the notification text, and <sessionId> is the Sandstorm session ID for the current request.\nReturns: JSON with lockId and expiresAt.",
-	"Renew an existing wake-lock lease before it expires.\nCommand: stay-awake renew --ttl 10m <lockId>\nArguments: --ttl is the new requested lease duration and <lockId> is the lease ID returned by the acquire command.\nReturns: JSON with expiresAt.",
-	"Release a wake-lock lease when background work is complete.\nCommand: stay-awake release <lockId>\nArguments: <lockId> is the lease ID returned by the acquire command.\nReturns: no output on success.",
+	"Run stay-awake as a child helper while background work is in progress.\nCommand: stay-awake --title \"Transcoding video\" --caption \"Encoding in the background\" <sessionId>\nArguments: --title and --caption control the notification text and <sessionId> is the Sandstorm session ID for the current request. Spawn this helper as a subprocess and keep its stdin open while the background task is active.\nLock lifetime: the wake lock stays active until the stay-awake process exits, its stdin is closed, or it receives SIGTERM, SIGHUP, or SIGINT.\nReturns: no output on success.",
+	"Hold a wake lock for a bounded amount of time.\nCommand: stay-awake --for 30s --title \"Transcoding video\" --caption \"Encoding in the background\" <sessionId>\nArguments: --for sets the maximum time to hold the lock, --title and --caption control the notification text, and <sessionId> is the Sandstorm session ID for the current request.\nLock lifetime: the wake lock is released when 30s elapse or earlier if the stay-awake process exits, its stdin is closed, or it receives SIGTERM, SIGHUP, or SIGINT.\nReturns: no output on success.",
 }
 
 func main() {
@@ -39,33 +36,10 @@ func main() {
 }
 
 func run(parent context.Context, args []string) error {
-	if len(args) == 0 {
-		return usageError()
-	}
-
-	switch args[0] {
-	case "acquire":
-		return runAcquire(parent, args[1:])
-	case "renew":
-		return runRenew(parent, args[1:])
-	case "release":
-		return runRelease(parent, args[1:])
-	case "serve":
-		return runServe(parent, args[1:])
-	case "-h", "--help", "help":
-		printUsage()
-		return nil
-	default:
-		return usageError()
-	}
-}
-
-func runAcquire(parent context.Context, args []string) error {
-	fs := cliutil.NewFlagSet(commandName+" acquire", "Acquire a Sandstorm wake lock lease.", "[--timeout 10s] [--socket PATH] [--api-path PATH] [--ttl 10m] --title TEXT [--caption TEXT] <sessionId>")
-	timeout := fs.Duration("timeout", 10*time.Second, "command timeout")
-	socketPath := fs.String("socket", stayawake.DefaultSocketPath(), "broker Unix socket path")
+	fs := cliutil.NewFlagSet(commandName, commandPurpose, commandSynopsis)
+	timeout := fs.Duration("timeout", 10*time.Second, "command timeout while acquiring the wake lock")
 	apiPath := fs.String("api-path", sandstorm.DefaultAPIPath, "Sandstorm API Unix socket path")
-	ttl := fs.Duration("ttl", stayawake.DefaultTTL, "lease time-to-live")
+	holdFor := fs.Duration("for", 0, "maximum time to hold the wake lock before exiting")
 	title := fs.String("title", "", "notification title")
 	caption := fs.String("caption", "", "notification caption")
 
@@ -73,204 +47,76 @@ func runAcquire(parent context.Context, args []string) error {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return cliutil.UsageError(commandName+" acquire", "[--timeout 10s] [--socket PATH] [--api-path PATH] [--ttl 10m] --title TEXT [--caption TEXT] <sessionId>")
+		return cliutil.UsageError(commandName, commandSynopsis)
+	}
+	if *holdFor < 0 {
+		return errors.New("--for must be non-negative")
 	}
 
-	ctx, cancel := cliutil.ContextWithTimeout(parent, *timeout)
-	defer cancel()
+	acquireCtx, cancelAcquire := cliutil.ContextWithTimeout(parent, *timeout)
+	defer cancelAcquire()
 
-	client, err := connectClient(ctx, *socketPath, *apiPath)
-	if err != nil {
-		return err
-	}
+	client := sandstorm.NewClient()
+	client.APIPath = *apiPath
 
-	resp, err := client.Acquire(ctx, stayawake.AcquireRequest{
+	lock, err := stayawake.AcquireHeldLock(acquireCtx, stayawake.Options{Client: client}, stayawake.AcquireRequest{
 		SessionID: fs.Arg(0),
-		TTL:       *ttl,
 		Title:     *title,
 		Caption:   *caption,
 	})
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = lock.Release()
+	}()
 
-	output, err := json.Marshal(struct {
-		LockID    string    `json:"lockId"`
-		ExpiresAt time.Time `json:"expiresAt"`
-	}{
-		LockID:    resp.LockID,
-		ExpiresAt: resp.ExpiresAt,
-	})
-	if err != nil {
-		return err
-	}
-	return cliutil.WriteOutput(output, true)
+	return waitForRelease(parent, *holdFor)
 }
 
-func runRenew(parent context.Context, args []string) error {
-	fs := cliutil.NewFlagSet(commandName+" renew", "Renew a wake lock lease.", "[--timeout 10s] [--socket PATH] [--api-path PATH] [--ttl 10m] <lockId>")
-	timeout := fs.Duration("timeout", 10*time.Second, "command timeout")
-	socketPath := fs.String("socket", stayawake.DefaultSocketPath(), "broker Unix socket path")
-	apiPath := fs.String("api-path", sandstorm.DefaultAPIPath, "Sandstorm API Unix socket path")
-	ttl := fs.Duration("ttl", stayawake.DefaultTTL, "lease time-to-live")
+func waitForRelease(parent context.Context, holdFor time.Duration) error {
+	ctx, stop := signal.NotifyContext(parent, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	defer stop()
 
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	if fs.NArg() != 1 {
-		return cliutil.UsageError(commandName+" renew", "[--timeout 10s] [--socket PATH] [--api-path PATH] [--ttl 10m] <lockId>")
+	stdinDone := watchStdin(os.Stdin)
+	var timer <-chan time.Time
+	if holdFor > 0 {
+		t := time.NewTimer(holdFor)
+		defer t.Stop()
+		timer = t.C
 	}
 
-	ctx, cancel := cliutil.ContextWithTimeout(parent, *timeout)
-	defer cancel()
-
-	client, err := connectClient(ctx, *socketPath, *apiPath)
-	if err != nil {
-		return err
-	}
-
-	expiresAt, err := client.Renew(ctx, fs.Arg(0), *ttl)
-	if err != nil {
-		return err
-	}
-
-	output, err := json.Marshal(struct {
-		ExpiresAt time.Time `json:"expiresAt"`
-	}{ExpiresAt: expiresAt})
-	if err != nil {
-		return err
-	}
-	return cliutil.WriteOutput(output, true)
-}
-
-func runRelease(parent context.Context, args []string) error {
-	fs := cliutil.NewFlagSet(commandName+" release", "Release a wake lock lease.", "[--timeout 10s] [--socket PATH] [--api-path PATH] <lockId>")
-	timeout := fs.Duration("timeout", 10*time.Second, "command timeout")
-	socketPath := fs.String("socket", stayawake.DefaultSocketPath(), "broker Unix socket path")
-	apiPath := fs.String("api-path", sandstorm.DefaultAPIPath, "Sandstorm API Unix socket path")
-
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	if fs.NArg() != 1 {
-		return cliutil.UsageError(commandName+" release", "[--timeout 10s] [--socket PATH] [--api-path PATH] <lockId>")
-	}
-
-	ctx, cancel := cliutil.ContextWithTimeout(parent, *timeout)
-	defer cancel()
-
-	client, err := connectClient(ctx, *socketPath, *apiPath)
-	if err != nil {
-		return err
-	}
-
-	return client.Release(ctx, fs.Arg(0))
-}
-
-func runServe(parent context.Context, args []string) error {
-	fs := flag.NewFlagSet(commandName+" serve", flag.ContinueOnError)
-	fs.SetOutput(ioDiscard{})
-	socketPath := fs.String("socket", stayawake.DefaultSocketPath(), "")
-	apiPath := fs.String("api-path", sandstorm.DefaultAPIPath, "")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-
-	client := sandstorm.NewClient()
-	client.APIPath = *apiPath
-	return stayawake.NewBroker(stayawake.Options{Client: client}).Serve(parent, *socketPath)
-}
-
-func connectClient(ctx context.Context, socketPath, apiPath string) (*stayawake.Client, error) {
-	client := stayawake.NewClient(socketPath)
-	if err := ensureBroker(ctx, socketPath, apiPath); err != nil {
-		return nil, err
-	}
-	return client, nil
-}
-
-func ensureBroker(ctx context.Context, socketPath, apiPath string) error {
-	client := stayawake.NewClient(socketPath)
-	if err := client.Release(ctx, "__probe__"); err == nil || !isDialError(err) {
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-stdinDone:
+		return nil
+	case <-timer:
 		return nil
 	}
-
-	if err := startBroker(socketPath, apiPath); err != nil {
-		return err
-	}
-
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		err := client.Release(ctx, "__probe__")
-		if err == nil || !isDialError(err) {
-			return nil
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-
-	return fmt.Errorf("broker did not start at %s", socketPath)
 }
 
-func startBroker(socketPath, apiPath string) error {
-	exe, err := resolveSelfPath()
-	if err != nil {
-		return err
+func watchStdin(r *os.File) <-chan struct{} {
+	done := make(chan struct{})
+	if shouldIgnoreStdin(r) {
+		return done
 	}
 
-	cmd := exec.Command(exe, "serve", "--socket", socketPath, "--api-path", apiPath)
-	devNull, err := os.OpenFile(os.DevNull, os.O_RDWR, 0)
-	if err != nil {
-		return err
-	}
-	defer devNull.Close()
+	go func() {
+		defer close(done)
+		_, _ = io.Copy(io.Discard, r)
+	}()
 
-	cmd.Stdin = devNull
-	cmd.Stdout = devNull
-	cmd.Stderr = devNull
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-	return cmd.Process.Release()
+	return done
 }
 
-func resolveSelfPath() (string, error) {
-	if len(os.Args) == 0 || strings.TrimSpace(os.Args[0]) == "" {
-		return "", errors.New("resolve executable path: argv[0] is empty")
-	}
-
-	exePath := os.Args[0]
-	if !filepath.IsAbs(exePath) {
-		absPath, err := filepath.Abs(exePath)
-		if err != nil {
-			return "", fmt.Errorf("resolve executable path: %w", err)
-		}
-		exePath = absPath
-	}
-
-	return exePath, nil
-}
-
-func isDialError(err error) bool {
-	if err == nil {
-		return false
-	}
-	var netErr *net.OpError
-	if errors.As(err, &netErr) {
+func shouldIgnoreStdin(r *os.File) bool {
+	if r == nil {
 		return true
 	}
-	return errors.Is(err, syscall.ENOENT) || errors.Is(err, syscall.ECONNREFUSED)
-}
-
-func printUsage() {
-	fmt.Fprintf(os.Stderr, "Usage:\n  %s <command> [flags]\n\nCommands:\n  acquire  acquire a wake lock lease\n  renew    renew a wake lock lease\n  release  release a wake lock lease\n", commandName)
-}
-
-func usageError() error {
-	return fmt.Errorf("usage: %s <acquire|renew|release> [flags]", commandName)
-}
-
-type ioDiscard struct{}
-
-func (ioDiscard) Write(p []byte) (int, error) {
-	return len(p), nil
+	info, err := r.Stat()
+	if err != nil {
+		return true
+	}
+	return (info.Mode() & os.ModeCharDevice) != 0
 }
