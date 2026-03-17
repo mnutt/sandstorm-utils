@@ -401,6 +401,16 @@ func (b *Broker) acquireWakeLock(ctx context.Context, caption string, notificati
 		_ = conn.Close()
 		return util.Handle{}, nil, nil, errors.New("stayAwake returned a null handle")
 	}
+	handle = handle.AddRef()
+	Debugf("acquireWakeLock retained handle reference")
+	if future, release := handle.Ping(ctx, nil); true {
+		defer release()
+		if _, err := future.Struct(); err != nil {
+			Debugf("acquireWakeLock handle ping failed: %v", err)
+		} else {
+			Debugf("acquireWakeLock handle ping succeeded")
+		}
+	}
 
 	return handle, conn, rpcConn, nil
 }
