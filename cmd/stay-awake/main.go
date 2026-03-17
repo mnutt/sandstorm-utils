@@ -18,11 +18,11 @@ import (
 
 const commandName = "stay-awake"
 const commandPurpose = "Keep a Sandstorm wake lock active for the lifetime of the helper process."
-const commandSynopsis = "[--timeout 10s] [--api-path PATH] [--for DURATION] --title TEXT [--caption TEXT] <sessionId>"
+const commandSynopsis = "[--timeout 10s] [--api-path PATH] [--for DURATION] --title TEXT [--caption TEXT]"
 
 var commandExamples = []string{
-	"Run stay-awake as a child helper while background work is in progress.\nCommand: stay-awake --title \"Transcoding video\" --caption \"Encoding in the background\" <sessionId>\nArguments: --title and --caption control the notification text and <sessionId> is the Sandstorm session ID for the current request. Spawn this helper as a subprocess and keep its stdin open while the background task is active.\nLock lifetime: the wake lock stays active until the stay-awake process exits, its stdin is closed, or it receives SIGTERM, SIGHUP, or SIGINT.\nReturns: no output on success.",
-	"Hold a wake lock for a bounded amount of time.\nCommand: stay-awake --for 30s --title \"Transcoding video\" --caption \"Encoding in the background\" <sessionId>\nArguments: --for sets the maximum time to hold the lock, --title and --caption control the notification text, and <sessionId> is the Sandstorm session ID for the current request.\nLock lifetime: the wake lock is released when 30s elapse or earlier if the stay-awake process exits, its stdin is closed, or it receives SIGTERM, SIGHUP, or SIGINT.\nReturns: no output on success.",
+	"Run stay-awake as a child helper while background work is in progress.\nCommand: stay-awake --title \"Transcoding video\" --caption \"Encoding in the background\"\nArguments: --title and --caption control the notification text. Spawn this helper as a subprocess and keep its stdin open while the background task is active.\nLock lifetime: the wake lock stays active until the stay-awake process exits, its stdin is closed, or it receives SIGTERM, SIGHUP, or SIGINT.\nReturns: no output on success.",
+	"Hold a wake lock for a bounded amount of time.\nCommand: stay-awake --for 30s --title \"Transcoding video\" --caption \"Encoding in the background\"\nArguments: --for sets the maximum time to hold the lock and --title and --caption control the notification text.\nLock lifetime: the wake lock is released when 30s elapse or earlier if the stay-awake process exits, its stdin is closed, or it receives SIGTERM, SIGHUP, or SIGINT.\nReturns: no output on success.",
 }
 
 func main() {
@@ -46,7 +46,7 @@ func run(parent context.Context, args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if fs.NArg() != 1 {
+	if fs.NArg() != 0 {
 		return cliutil.UsageError(commandName, commandSynopsis)
 	}
 	if *holdFor < 0 {
@@ -60,7 +60,6 @@ func run(parent context.Context, args []string) error {
 	client.APIPath = *apiPath
 
 	lock, err := stayawake.AcquireHeldLock(acquireCtx, stayawake.Options{Client: client}, stayawake.AcquireRequest{
-		SessionID: fs.Arg(0),
 		Title:     *title,
 		Caption:   *caption,
 	})

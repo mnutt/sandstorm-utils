@@ -10,15 +10,15 @@ func TestRunUsage(t *testing.T) {
 	t.Parallel()
 
 	err := run(context.Background(), nil)
-	if err == nil || !strings.Contains(err.Error(), "usage: stay-awake [--timeout 10s]") {
+	if err == nil || !strings.Contains(err.Error(), "title is required") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestRequiresSessionID(t *testing.T) {
+func TestRejectsUnexpectedPositionalArg(t *testing.T) {
 	t.Parallel()
 
-	err := run(context.Background(), []string{"--title", "Transcoding"})
+	err := run(context.Background(), []string{"--title", "Transcoding", "session-1"})
 	if err == nil || !strings.Contains(err.Error(), "usage: stay-awake [--timeout 10s]") {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -27,7 +27,7 @@ func TestRequiresSessionID(t *testing.T) {
 func TestRejectsNegativeHoldDuration(t *testing.T) {
 	t.Parallel()
 
-	err := run(context.Background(), []string{"--for", "-1s", "--title", "Transcoding", "session-1"})
+	err := run(context.Background(), []string{"--for", "-1s", "--title", "Transcoding"})
 	if err == nil || !strings.Contains(err.Error(), "--for must be non-negative") {
 		t.Fatalf("unexpected error: %v", err)
 	}

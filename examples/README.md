@@ -19,7 +19,7 @@ node examples/inspect-request.mjs <session-id>
 node examples/inspect-offer.mjs <session-id>
 node examples/close-after-export.mjs <session-id>
 node examples/send-email.mjs <session-id> <recipient-email>
-node examples/stay-awake.mjs <session-id>
+node examples/stay-awake.mjs
 ```
 
 `stay-awake.mjs` demonstrates the intended integration pattern for background

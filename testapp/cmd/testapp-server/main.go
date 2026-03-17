@@ -330,7 +330,6 @@ func (a *app) runStayAwake(ctx context.Context, sessionID string) ([]commandResu
 		"--for", "2s",
 		"--title", "sandstorm-utils testapp",
 		"--caption", "Running integration task",
-		sessionID,
 	})
 	if err != nil {
 		return []commandResult{step}, err

@@ -127,8 +127,8 @@ Command examples:
 ./send-email --to user@example.com --subject "Hello" --text "Hi there" <session-id>
 ./send-email --json-input message.json <session-id>
 
-./stay-awake --title "Transcoding video" --caption "Encoding in the background" <session-id>
-./stay-awake --for 30s --title "Transcoding video" --caption "Encoding in the background" <session-id>
+./stay-awake --title "Transcoding video" --caption "Encoding in the background"
+./stay-awake --for 30s --title "Transcoding video" --caption "Encoding in the background"
 ```
 
 Behavior notes:

@@ -4,12 +4,6 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const binDir = process.env.SANDSTORM_UTILS_BIN || path.resolve(here, "..", "dist", "bin");
-const sessionId = process.argv[2];
-
-if (!sessionId) {
-  console.error(`usage: node ${path.basename(process.argv[1])} <session-id>`);
-  process.exit(1);
-}
 
 const stayAwake = path.join(binDir, "stay-awake");
 
@@ -27,7 +21,6 @@ const child = spawn(
     "Transcoding video",
     "--caption",
     "Encoding a video in the background",
-    sessionId,
   ],
   {
     stdio: ["pipe", "inherit", "inherit"],
