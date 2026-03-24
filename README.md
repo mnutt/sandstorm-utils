@@ -36,6 +36,7 @@ Current layout:
 - `cmd/get-session-offer`: `SandstormHttpBridge.getSessionOffer()`
 - `cmd/send-email`: `EmailSendPort.send()` via `HackSessionContext`
 - `cmd/stay-awake`: helper that holds `SandstormApi.stayAwake()` for the life of the process
+- `cmd/enter-grain`: helper that joins a grain process's Linux namespaces and launches a shell
 - `testapp`: Sandstorm integration harness that shells out to the utilities
 - `internal/sandstorm`: shared bridge/session client logic
 - `schemas/sandstorm`: vendored annotated Cap'n Proto schemas
@@ -129,6 +130,8 @@ Command examples:
 
 ./stay-awake --title "Transcoding video" --caption "Encoding in the background"
 ./stay-awake --for 30s --title "Transcoding video" --caption "Encoding in the background"
+
+./enter-grain <pid>
 ```
 
 Behavior notes:
@@ -155,6 +158,8 @@ Behavior notes:
   not provided, and accepts either direct flags or `--json-input FILE`.
 - `stay-awake` acquires a Sandstorm wake lock and keeps it alive for the life
   of the helper process; close stdin or send a termination signal to release it.
+- `enter-grain` is Linux-only; it joins the target process's namespaces and
+  launches `/bin/bash` with that process's environment.
 - `testapp/` contains a minimal Sandstorm app plus Lima/SPK workflows for
   packaging an integration harness. Its package ID should match the signing key
   stored in `SANDSTORM_TESTAPP_KEYRING_B64`.

@@ -9,7 +9,7 @@ RELEASEDIR ?= $(DISTDIR)/release
 VERSION ?= dev
 GOOS ?= $(shell $(GO) env GOOS)
 GOARCH ?= $(shell $(GO) env GOARCH)
-CMDS := get-public-id get-user-address close-session open-view post-activity get-session-request get-session-offer send-email stay-awake
+CMDS := get-public-id get-user-address close-session open-view post-activity get-session-request get-session-offer send-email stay-awake enter-grain
 
 .PHONY: generate manifest build test install package clean
 
