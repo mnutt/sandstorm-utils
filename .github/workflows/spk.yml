@@ -2,9 +2,6 @@ name: Build Testapp SPK
 
 on:
   push:
-    branches:
-      - main
-      - master
   workflow_dispatch:
 
 permissions:

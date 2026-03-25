@@ -37,6 +37,7 @@ Current layout:
 - `cmd/send-email`: `EmailSendPort.send()` via `HackSessionContext`
 - `cmd/stay-awake`: helper that holds `SandstormApi.stayAwake()` for the life of the process
 - `cmd/enter-grain`: helper that joins a grain process's Linux namespaces and launches a shell
+- `cmd/app-harness`: standalone app harness manager for supervisor-backed test/debug workdirs
 - `testapp`: Sandstorm integration harness that shells out to the utilities
 - `internal/sandstorm`: shared bridge/session client logic
 - `schemas/sandstorm`: vendored annotated Cap'n Proto schemas
@@ -87,6 +88,15 @@ make build BINDIR=$(pwd)/testapp/bin
 go build -o testapp/bin/testapp-server ./testapp/cmd/testapp-server
 ```
 
+Bootstrap the Sandstorm dev environment with `spktool`:
+
+```bash
+spktool --provider lima setupvm --force golang
+spktool upgradevm
+spktool vm create
+spktool dev
+```
+
 Run the full test suite:
 
 ```bash
@@ -132,6 +142,21 @@ Command examples:
 ./stay-awake --for 30s --title "Transcoding video" --caption "Encoding in the background"
 
 ./enter-grain <pid>
+
+app-harness create \
+  --root .app-harness \
+  --grain demo \
+  --supervisor /path/to/sandstorm-supervisor \
+  --socket .app-harness/grains/demo/supervisor.sock
+app-harness start --root .app-harness --grain demo
+app-harness session-open --root .app-harness --grain demo --session web
+app-harness request --root .app-harness --grain demo --session web --method GET --path /
+app-harness request --root .app-harness --grain demo --session web --method POST --path /submit --mime-type application/json --body '{"ok":true}' --header x-sandstorm-app-test=1 --cookie session=abc
+app-harness serve --pkg-def /opt/app/.sandstorm/sandstorm-pkgdef.capnp:pkgdef --port 3010
+app-harness status --root .app-harness --grain demo
+app-harness dump --root .app-harness --grain demo
+app-harness logs --root .app-harness --grain demo --name monitor
+app-harness stop --root .app-harness --grain demo
 ```
 
 Behavior notes:
@@ -160,8 +185,21 @@ Behavior notes:
   of the helper process; close stdin or send a termination signal to release it.
 - `enter-grain` is Linux-only; it joins the target process's namespaces and
   launches `/bin/bash` with that process's environment.
-- `testapp/` contains a minimal Sandstorm app plus Lima/SPK workflows for
-  packaging an integration harness. Its package ID should match the signing key
-  stored in `SANDSTORM_TESTAPP_KEYRING_B64`.
-- For local Sandstorm development of the integration harness, run `lima-spk`
-  from the repo root so the VM sees the full repository at `/opt/app`.
+- `app-harness` creates an inspectable workdir with `grain.json`, JSONL event
+  capture, and separate supervisor/monitor logs. Its current scope is grain
+  lifecycle, fake `SandstormCore` keepalive/event capture, stored session specs,
+  and basic `WebSession` driving via `session-open`, `request`, and `serve`.
+  `serve --pkg-def ... --port ...` materializes a real package via `spk`,
+  launches the real supervisor, and exposes the app over local HTTP.
+- `testapp/` contains a minimal Sandstorm app used to verify the real
+  `app-harness serve --pkg-def` path. Its package ID should match the signing
+  key stored in `SANDSTORM_TESTAPP_KEYRING_B64`.
+- The repo is now bootstrapped for `spktool`; editable source-of-truth files
+  include [`.sandstorm/box.toml`](/Users/mnutt/p/personal/sandstorm-utils/.sandstorm/box.toml),
+  [`.sandstorm/build.sh`](/Users/mnutt/p/personal/sandstorm-utils/.sandstorm/build.sh),
+  [`.sandstorm/setup.sh`](/Users/mnutt/p/personal/sandstorm-utils/.sandstorm/setup.sh), and
+  [`.sandstorm/launcher.sh`](/Users/mnutt/p/personal/sandstorm-utils/.sandstorm/launcher.sh).
+- The VM-backed integration test in
+  [`grain_harness_vm_integration_test.go`](/Users/mnutt/p/personal/sandstorm-utils/scripts/grain_harness_vm_integration_test.go)
+  is skipped by default and can be enabled with
+  `SANDSTORM_VM_INTEGRATION=1`.

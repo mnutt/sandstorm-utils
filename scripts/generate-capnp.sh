@@ -30,5 +30,12 @@ PATH="$bin_dir:$PATH" capnp compile -I"$schema_dir" -I"$std_dir" -ogo:"$out_dir"
   "$schema_dir/sandstorm/powerbox.capnp" \
   "$schema_dir/sandstorm/sandstorm-http-bridge.capnp" \
   "$schema_dir/sandstorm/settings.capnp" \
+  "$schema_dir/sandstorm/supervisor.capnp" \
   "$schema_dir/sandstorm/util.capnp" \
   "$schema_dir/sandstorm/web-session.capnp"
+
+mkdir -p "$out_dir/supervisor"
+cp "$out_dir/schemas/sandstorm/supervisor.capnp.go" "$out_dir/supervisor/supervisor.capnp.go"
+perl -0pi -e 's/c, _ := s\.\(server\.Shutdowner\)\n\treturn server\.New\(Supervisor_Methods\(nil, s\), s, c\)/return server.New(Supervisor_Methods(nil, s), s, nil)/' \
+  "$out_dir/supervisor/supervisor.capnp.go"
+rm -rf "$out_dir/schemas"

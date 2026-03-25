@@ -4,42 +4,81 @@ set -euo pipefail
 # CAUTION: DO NOT MAKE CHANGES TO THIS FILE. The vagrant-spk upgradevm process will overwrite it.
 # App-specific setup should be done in the setup.sh file.
 
-CURL_OPTS="--silent --show-error"
+# Set options for curl. Since we only want to show errors from these curl commands, we also use
+# 'cat' to buffer the output; for more information:
+# https://github.com/sandstorm-io/vagrant-spk/issues/158
+
+CURL_OPTS="--silent --show-error --location"
 echo localhost > /etc/hostname
 hostname localhost
+. /opt/app/.sandstorm/.generated/runtime.env
 
-apt-mark hold grub-pc
+SANDSTORM_INSTALL_SCRIPT_URL="https://install.sandstorm.io/"
+SANDSTORM_PACKAGE_URL="${SANDSTORM_DOWNLOAD_URL:-}"
+
+# Grub updates don't silent install well
+apt-mark hold grub-pc || true
 apt-get update
 apt-get upgrade -y
 
-apt-get install -y curl gnupg
+# Install curl needed below, and gnupg for package signing
+apt-get install -y curl gnupg netcat-openbsd
 
-curl $CURL_OPTS https://install.sandstorm.io/ 2>&1 > /host-dot-sandstorm/caches/install.sh | cat
+# The following line copies stderr through stderr to cat without accidentally leaving it in the
+# output file. Be careful when changing. See: https://github.com/sandstorm-io/vagrant-spk/pull/159
+curl $CURL_OPTS --fail "${SANDSTORM_INSTALL_SCRIPT_URL}" 2>&1 > /host-dot-sandstorm/caches/install.sh | cat
 
-SANDSTORM_CURRENT_VERSION=$(curl $CURL_OPTS -f "https://install.sandstorm.io/dev?from=0&type=install")
-SANDSTORM_PACKAGE="sandstorm-$SANDSTORM_CURRENT_VERSION.tar.xz"
+if [[ -n "${SANDSTORM_PACKAGE_URL}" ]]; then
+    SANDSTORM_PACKAGE="${SANDSTORM_PACKAGE_URL##*/}"
+    SANDSTORM_CURRENT_VERSION="${SANDSTORM_PACKAGE#sandstorm-}"
+    SANDSTORM_CURRENT_VERSION="${SANDSTORM_CURRENT_VERSION%.tar.xz}"
+else
+    SANDSTORM_CURRENT_VERSION=$(curl $CURL_OPTS -f "https://install.sandstorm.io/dev?from=0&type=install")
+    SANDSTORM_PACKAGE="sandstorm-$SANDSTORM_CURRENT_VERSION.tar.xz"
+    SANDSTORM_PACKAGE_URL="https://dl.sandstorm.io/$SANDSTORM_PACKAGE"
+fi
+
 if [[ ! -f /host-dot-sandstorm/caches/$SANDSTORM_PACKAGE ]] ; then
     echo -n "Downloading Sandstorm version ${SANDSTORM_CURRENT_VERSION}..."
-    curl $CURL_OPTS --output "/host-dot-sandstorm/caches/$SANDSTORM_PACKAGE.partial" "https://dl.sandstorm.io/$SANDSTORM_PACKAGE" 2>&1 | cat
+    curl $CURL_OPTS --fail --output "/host-dot-sandstorm/caches/$SANDSTORM_PACKAGE.partial" "${SANDSTORM_PACKAGE_URL}" 2>&1 | cat
     mv "/host-dot-sandstorm/caches/$SANDSTORM_PACKAGE.partial" "/host-dot-sandstorm/caches/$SANDSTORM_PACKAGE"
     echo "...done."
 fi
 if [ ! -e /opt/sandstorm/latest/sandstorm ] ; then
     echo -n "Installing Sandstorm version ${SANDSTORM_CURRENT_VERSION}..."
-    bash /host-dot-sandstorm/caches/install.sh -d -e -p 6090 "/host-dot-sandstorm/caches/$SANDSTORM_PACKAGE" >/dev/null
+    REPORT=no bash /host-dot-sandstorm/caches/install.sh -d -e -p "${SANDSTORM_GUEST_PORT}" "/host-dot-sandstorm/caches/$SANDSTORM_PACKAGE"
     echo "...done."
 fi
 modprobe ip_tables
-usermod -a -G 'sandstorm' 'vagrant'
+# Make the primary guest user part of the sandstorm group so that commands like
+# `spk dev` work across providers.
+APP_USER="${SUDO_USER:-}"
+if [[ -z "${APP_USER}" || "${APP_USER}" == "root" ]]; then
+    if id -u vagrant >/dev/null 2>&1; then
+        APP_USER="vagrant"
+    else
+        APP_USER="$(find /home -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | head -n1)"
+    fi
+fi
+if [[ -n "${APP_USER}" ]] && id -u "${APP_USER}" >/dev/null 2>&1; then
+    usermod -a -G 'sandstorm' "${APP_USER}"
+fi
+# Bind to all addresses, so the vagrant port-forward works.
 sudo sed --in-place='' \
         --expression='s/^BIND_IP=.*/BIND_IP=0.0.0.0/' \
+        --expression="s#^PORT=.*#PORT=${SANDSTORM_GUEST_PORT}#" \
+        --expression="s#^BASE_URL=.*#BASE_URL=${SANDSTORM_BASE_URL}#" \
+        --expression="s#^WILDCARD_HOST=.*#WILDCARD_HOST=${SANDSTORM_WILDCARD_HOST}#" \
         /opt/sandstorm/sandstorm.conf
 
+# Force vagrant-spk to use the strict CSP, see sandstorm#3424 for details.
 echo 'ALLOW_LEGACY_RELAXED_CSP=false' >> /opt/sandstorm/sandstorm.conf
 
 sudo service sandstorm restart
+# Enable apt-cacher-ng proxy to make things faster if one appears to be running on the gateway IP
 GATEWAY_IP=$(ip route  | grep ^default  | cut -d ' ' -f 3)
 if nc -z "$GATEWAY_IP" 3142 ; then
     echo "Acquire::http::Proxy \"http://$GATEWAY_IP:3142\";" > /etc/apt/apt.conf.d/80httpproxy
 fi
+# Configure apt to retry fetching things that fail to download.
 echo "APT::Acquire::Retries \"10\";" > /etc/apt/apt.conf.d/80sandstorm-retry

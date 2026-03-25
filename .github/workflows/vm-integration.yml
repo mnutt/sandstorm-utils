@@ -1,26 +1,17 @@
-name: SPK Build Reusable
+name: VM Integration
 
 on:
-  workflow_call:
-    inputs:
-      environment_name:
-        required: true
-        type: string
-      spk_output_path:
-        required: true
-        type: string
-      artifact_name:
-        required: true
-        type: string
-    secrets:
-      sandstorm_keyring_b64:
-        required: true
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  build-spk:
+  vm-integration:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    environment: ${{ inputs.environment_name }}
+    environment: test-spk
 
     env:
       GOCACHE: /tmp/go-build
@@ -38,12 +29,6 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run host-side tests
-        run: make test
-
-      - name: Run host-side build check
-        run: make build
-
       - name: Set up Lima
         uses: lima-vm/lima-actions/setup@v1
         id: lima-actions-setup
@@ -56,11 +41,11 @@ jobs:
 
       - name: Restore Sandstorm signing keyring
         env:
-          SANDSTORM_KEYRING_B64: ${{ secrets.sandstorm_keyring_b64 }}
+          SANDSTORM_KEYRING_B64: ${{ secrets.SANDSTORM_TESTAPP_KEYRING_B64 }}
         run: |
           set -euo pipefail
           if [ -z "${SANDSTORM_KEYRING_B64:-}" ]; then
-            echo "::error::Missing required secret sandstorm_keyring_b64"
+            echo "::error::Missing required secret SANDSTORM_TESTAPP_KEYRING_B64"
             exit 1
           fi
           mkdir -p "$HOME/.sandstorm/caches"
@@ -84,21 +69,13 @@ jobs:
       - name: Provision Lima VM
         run: spktool --provider lima vm provision
 
-      - name: Inspect mounted app tree
-        run: spktool --provider lima vm ssh -- /bin/sh -lc 'pwd; ls -la /opt/app; ls -la /opt/app/testapp || true; which go || true; which spk || true'
-
       - name: Build testapp inside Lima
         run: spktool --provider lima vm ssh -- /bin/sh -lc 'cd /opt/app && /opt/app/.sandstorm/build.sh'
 
-      - name: Build SPK
+      - name: Run VM-backed app-harness integration test
+        env:
+          SANDSTORM_VM_INTEGRATION: "1"
+          SPKTOOL: spktool
         run: |
           set -euo pipefail
-          mkdir -p build
-          spktool --provider lima pack "${{ inputs.spk_output_path }}"
-
-      - name: Upload SPK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.artifact_name }}
-          path: ${{ inputs.spk_output_path }}
-          if-no-files-found: error
+          GOCACHE=/tmp/go-build go test -v ./scripts -run TestGrainHarnessServePkgDefInVM -count=1

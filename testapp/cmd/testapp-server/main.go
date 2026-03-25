@@ -17,7 +17,6 @@ import (
 )
 
 const sessionHeader = "X-Sandstorm-Session-Id"
-
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -460,6 +459,19 @@ func parsedString(value any, key string) (string, bool) {
 	}
 	s, ok := v.(string)
 	return s, ok
+}
+
+func parsedFloat(value any, key string) (float64, bool) {
+	m, ok := value.(map[string]any)
+	if !ok {
+		return 0, false
+	}
+	v, ok := m[key]
+	if !ok {
+		return 0, false
+	}
+	f, ok := v.(float64)
+	return f, ok
 }
 
 const indexHTML = `<!doctype html>

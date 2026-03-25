@@ -25,6 +25,9 @@ using Grain = import "grain.capnp";
 using Persistent = import "/capnp/persistent.capnp".Persistent;
 using Activity = import "activity.capnp";
 using Identity = import "identity.capnp";
+using Go = import "/go.capnp";
+$Go.package("supervisor");
+$Go.import("github.com/mnutt/sandstorm-utils/internal/generated/supervisor");
 
 interface Supervisor {
   # Default capability exported by the supervisor process.

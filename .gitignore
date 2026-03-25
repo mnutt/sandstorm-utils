@@ -1,3 +1,5 @@
 /.cache/
 /dist/
 /testapp/bin/
+.codex/skills/sandstorm-app-author/
+.claude/skills/sandstorm-app-author/

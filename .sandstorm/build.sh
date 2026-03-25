@@ -40,6 +40,7 @@ commands=(
   get-session-offer
   send-email
   stay-awake
+  app-harness
 )
 
 for command in "${commands[@]}"; do

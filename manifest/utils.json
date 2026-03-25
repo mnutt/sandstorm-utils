@@ -2,6 +2,17 @@
   "version": 1,
   "utilities": [
     {
+      "name": "app-harness",
+      "summary": "manages standalone supervisor-backed app harness workdirs.",
+      "description": "Manage standalone supervisor-backed app harness workdirs for repeatable tests and debugging.",
+      "examples": [
+        "Create a harness workdir for an app grain and record how the supervisor should be launched.\nCommand: app-harness create --root .app-harness --grain demo --supervisor /path/to/sandstorm-supervisor --pkg /tmp/testpkg --app-name demo -- /sandstorm-http-bridge 3000 -- /opt/app/testapp/bin/testapp-server\nArguments: trailing arguments after `--` become the app command executed under the Sandstorm supervisor.\nReturns: JSON describing the created grain state.\nUse this before starting a new acceptance-test or debugging grain instance.",
+        "Start the configured supervisor plus the keepalive monitor, then inspect its state and logs.\nCommand: app-harness start --root .app-harness --grain demo\nArguments: none.\nReturns: JSON with the running supervisor and monitor PIDs.\nUse this to boot the harness-managed grain and begin collecting structured SandstormCore events.",
+        "Open a reusable session spec and send a request through the grain's WebSession interface.\nCommand: app-harness session-open --root .app-harness --grain demo --session web\nArguments: none.\nReturns: JSON describing the stored session spec.\nUse this with `app-harness request --session web --method GET --path /` to drive acceptance tests or automated debugging.",
+        "Expose a running app grain on a local HTTP port by forwarding requests through WebSession.\nCommand: app-harness serve --pkg-def /opt/app/.sandstorm/sandstorm-pkgdef.capnp:pkgdef --port 3000\nArguments: none.\nReturns: no JSON; runs until interrupted.\nUse this for host or VM-driven debug loops against sandstorm-http-bridge apps."
+      ]
+    },
+    {
       "name": "close-session",
       "summary": "Closes an active Sandstorm session.",
       "description": "Close an active Sandstorm session.",
