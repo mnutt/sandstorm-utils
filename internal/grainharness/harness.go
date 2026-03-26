@@ -26,7 +26,9 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 
 	activity "github.com/mnutt/sandstorm-utils/internal/generated/activity"
+	email "github.com/mnutt/sandstorm-utils/internal/generated/email"
 	grain "github.com/mnutt/sandstorm-utils/internal/generated/grain"
+	hacksession "github.com/mnutt/sandstorm-utils/internal/generated/hacksession"
 	identity "github.com/mnutt/sandstorm-utils/internal/generated/identity"
 	spk "github.com/mnutt/sandstorm-utils/internal/generated/spk"
 	supervisor "github.com/mnutt/sandstorm-utils/internal/generated/supervisor"
@@ -51,6 +53,7 @@ type Config struct {
 	PackagePath       string            `json:"packagePath,omitempty"`
 	AppName           string            `json:"appName,omitempty"`
 	AppCommand        []string          `json:"appCommand,omitempty"`
+	MocksFile         string            `json:"mocksFile,omitempty"`
 	KeepAliveInterval time.Duration     `json:"keepAliveInterval"`
 	ConnectTimeout    time.Duration     `json:"connectTimeout"`
 	BootMainView      bool              `json:"bootMainView"`
@@ -114,6 +117,23 @@ type RequestCookie struct {
 	Value string `json:"value"`
 }
 
+type HarnessMocks struct {
+	PublicID    MockPublicID    `json:"publicId"`
+	UserAddress MockUserAddress `json:"userAddress"`
+}
+
+type MockPublicID struct {
+	PublicID   string `json:"publicId"`
+	Hostname   string `json:"hostname"`
+	AutoURL    string `json:"autoUrl"`
+	IsDemoUser bool   `json:"isDemoUser"`
+}
+
+type MockUserAddress struct {
+	Address string `json:"address"`
+	Name    string `json:"name"`
+}
+
 type materializedPackage struct {
 	PackagePath    string
 	AppName        string
@@ -130,6 +150,7 @@ type ServeOptions struct {
 	BaseURL   string
 	UserAgent string
 	PkgDef    string
+	MocksPath string
 	Port      string
 }
 
@@ -435,7 +456,11 @@ func (m *Manager) DoRequest(ctx context.Context, rootDir, grainID string, req Re
 	}
 	defer releaseView()
 
-	sessionCtx := &sessionContextServer{logger: logger}
+	mocks, err := loadMocks(state.Config.MocksFile)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx := &sessionContextServer{logger: logger, mocks: mocks}
 	web, releaseWeb, err := openWebSession(ctx, view, spec, sessionCtx)
 	if err != nil {
 		return nil, err
@@ -654,6 +679,7 @@ func (m *Manager) prepareServedGrain(ctx context.Context, opts ServeOptions) err
 	cfg.PackagePath = materialized.PackagePath
 	cfg.AppName = materialized.AppName
 	cfg.AppCommand = materialized.Command
+	cfg.MocksFile = opts.MocksPath
 	cfg.SupervisorEnv = materialized.Env
 
 	if _, err := m.Create(cfg); err != nil {
@@ -1263,6 +1289,7 @@ func setBody(payload *ResponsePayload, body []byte) {
 
 type sessionContextServer struct {
 	logger *eventLogger
+	mocks  HarnessMocks
 }
 
 func (s *sessionContextServer) GetSharedPermissions(context.Context, grain.SessionContext_getSharedPermissions) error {
@@ -1305,6 +1332,134 @@ func (s *sessionContextServer) Activity(_ context.Context, call grain.SessionCon
 		return err
 	}
 	return s.logger.Append("sessionContext.activity", RenderActivityEvent(event))
+}
+
+func (s *sessionContextServer) GetPublicId(_ context.Context, call hacksession.HackSessionContext_getPublicId) error {
+	if err := s.logger.Append("sessionContext.getPublicId", map[string]any{
+		"publicId":   s.mocks.PublicID.PublicID,
+		"hostname":   s.mocks.PublicID.Hostname,
+		"autoUrl":    s.mocks.PublicID.AutoURL,
+		"isDemoUser": s.mocks.PublicID.IsDemoUser,
+	}); err != nil {
+		return err
+	}
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+	if err := results.SetPublicId(s.mocks.PublicID.PublicID); err != nil {
+		return err
+	}
+	if err := results.SetHostname(s.mocks.PublicID.Hostname); err != nil {
+		return err
+	}
+	if err := results.SetAutoUrl(s.mocks.PublicID.AutoURL); err != nil {
+		return err
+	}
+	results.SetIsDemoUser(s.mocks.PublicID.IsDemoUser)
+	return nil
+}
+
+func (s *sessionContextServer) GetUserAddress(_ context.Context, call hacksession.HackSessionContext_getUserAddress) error {
+	if err := s.logger.Append("sessionContext.getUserAddress", map[string]any{
+		"address": s.mocks.UserAddress.Address,
+		"name":    s.mocks.UserAddress.Name,
+	}); err != nil {
+		return err
+	}
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+	if err := results.SetAddress(s.mocks.UserAddress.Address); err != nil {
+		return err
+	}
+	return results.SetName(s.mocks.UserAddress.Name)
+}
+
+func (s *sessionContextServer) ObsoleteHttpGet(context.Context, hacksession.HackSessionContext_obsoleteHttpGet) error {
+	return errors.New("not implemented")
+}
+
+func (s *sessionContextServer) ObsoleteGenerateApiToken(context.Context, hacksession.HackSessionContext_obsoleteGenerateApiToken) error {
+	return errors.New("not implemented")
+}
+
+func (s *sessionContextServer) ObsoleteListApiTokens(context.Context, hacksession.HackSessionContext_obsoleteListApiTokens) error {
+	return errors.New("not implemented")
+}
+
+func (s *sessionContextServer) ObsoleteRevokeApiToken(context.Context, hacksession.HackSessionContext_obsoleteRevokeApiToken) error {
+	return errors.New("not implemented")
+}
+
+func (s *sessionContextServer) ObsoleteGetIpNetwork(context.Context, hacksession.HackSessionContext_obsoleteGetIpNetwork) error {
+	return errors.New("not implemented")
+}
+
+func (s *sessionContextServer) ObsoleteGetIpInterface(context.Context, hacksession.HackSessionContext_obsoleteGetIpInterface) error {
+	return errors.New("not implemented")
+}
+
+func (s *sessionContextServer) ObsoleteGetUiViewForEndpoint(context.Context, hacksession.HackSessionContext_obsoleteGetUiViewForEndpoint) error {
+	return errors.New("not implemented")
+}
+
+func (s *sessionContextServer) Send(_ context.Context, call email.EmailSendPort_send) error {
+	args := call.Args()
+	message, err := args.Email()
+	if err != nil {
+		return err
+	}
+
+	from, err := readEmailAddress(message.From)
+	if err != nil {
+		return err
+	}
+	to, err := readEmailAddressList(message.To)
+	if err != nil {
+		return err
+	}
+	cc, err := readEmailAddressList(message.Cc)
+	if err != nil {
+		return err
+	}
+	bcc, err := readEmailAddressList(message.Bcc)
+	if err != nil {
+		return err
+	}
+
+	fields := map[string]any{
+		"from": from,
+		"to":   to,
+		"cc":   cc,
+		"bcc":  bcc,
+	}
+	if message.HasReplyTo() {
+		replyTo, err := readEmailAddress(message.ReplyTo)
+		if err != nil {
+			return err
+		}
+		fields["replyTo"] = replyTo
+	}
+	if subject, err := message.Subject(); err == nil {
+		fields["subject"] = subject
+	}
+	if text, err := message.Text(); err == nil {
+		fields["text"] = text
+	}
+	if html, err := message.Html(); err == nil {
+		fields["html"] = html
+	}
+	if err := s.logger.Append("sessionContext.sendEmail", fields); err != nil {
+		return err
+	}
+	_, err = call.AllocResults()
+	return err
+}
+
+func (s *sessionContextServer) HintAddress(context.Context, email.EmailSendPort_hintAddress) error {
+	return nil
 }
 
 type byteStreamServer struct {
@@ -1577,6 +1732,32 @@ func writeJSONFile(path string, v any) error {
 	return os.WriteFile(path, data, 0o644)
 }
 
+func defaultMocks() HarnessMocks {
+	return HarnessMocks{
+		PublicID: MockPublicID{
+			PublicID:   "grain-harness-public-id",
+			Hostname:   "local.sandstorm.test",
+			AutoURL:    "https://local.sandstorm.test/shared/grain-harness-public-id",
+			IsDemoUser: false,
+		},
+		UserAddress: MockUserAddress{
+			Address: "user@example.com",
+			Name:    "Grain Harness User",
+		},
+	}
+}
+
+func loadMocks(path string) (HarnessMocks, error) {
+	mocks := defaultMocks()
+	if strings.TrimSpace(path) == "" {
+		return mocks, nil
+	}
+	if err := readJSONFile(path, &mocks); err != nil {
+		return HarnessMocks{}, err
+	}
+	return mocks, nil
+}
+
 func readJSONFile(path string, dest any) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -1802,6 +1983,43 @@ func decodeErrorBody(payload *ResponsePayload, body websession.ErrorBody) {
 	payload.Language, _ = body.Language()
 	data, _ := body.Data()
 	setBody(payload, data)
+}
+
+func readEmailAddress(get func() (email.EmailAddress, error)) (map[string]any, error) {
+	addr, err := get()
+	if err != nil {
+		return nil, err
+	}
+	address, err := addr.Address()
+	if err != nil {
+		return nil, err
+	}
+	name, err := addr.Name()
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"address": address, "name": name}, nil
+}
+
+func readEmailAddressList(get func() (email.EmailAddress_List, error)) ([]map[string]any, error) {
+	list, err := get()
+	if err != nil {
+		return nil, err
+	}
+	values := make([]map[string]any, 0, list.Len())
+	for i := 0; i < list.Len(); i++ {
+		item := list.At(i)
+		address, err := item.Address()
+		if err != nil {
+			return nil, err
+		}
+		name, err := item.Name()
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, map[string]any{"address": address, "name": name})
+	}
+	return values, nil
 }
 
 func setKeyValueText(value util.KeyValue, key, text string) error {

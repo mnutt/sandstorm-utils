@@ -272,6 +272,7 @@ func runServe(ctx context.Context, args []string) error {
 	sessionID := fs.String("session", "serve", "session ID to reuse for proxied requests")
 	baseURL := fs.String("base-url", "", "base URL exposed to the app; defaults to http://<addr>")
 	userAgent := fs.String("user-agent", "app-harness-serve/0", "session user agent")
+	mocks := fs.String("mocks", "", "optional JSON file describing mocked Sandstorm API responses")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -289,6 +290,7 @@ func runServe(ctx context.Context, args []string) error {
 		BaseURL:   *baseURL,
 		UserAgent: *userAgent,
 		PkgDef:    *pkgDef,
+		MocksPath: *mocks,
 		Port:      *port,
 	})
 }
